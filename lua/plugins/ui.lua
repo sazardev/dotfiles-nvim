@@ -4,51 +4,84 @@
 -- Coherente con Hyprland + Waybar + Kitty
 -- ══════════════════════════════════════════════════
 return {
-  -- ── Alpha — dashboard minimalista ──────────────
+  -- ── Alpha — dashboard estilo waybar ────────────
   {
     "goolord/alpha-nvim",
     event        = "VimEnter",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
       local alpha = require("alpha")
-      local dash  = require("alpha.themes.dashboard")
 
-      dash.section.header.val = {
-        "",
-        "  nvim",
-        "",
-      }
-      dash.section.header.opts = {
-        hl     = "GruvboxOrangeBold",
-        position = "left",
+      -- Highlight groups propios (mismos colores que waybar)
+      vim.api.nvim_set_hl(0, "AlphaName",   { fg = "#d65d0e", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaInfo",   { fg = "#504945" })
+      vim.api.nvim_set_hl(0, "AlphaSep",    { fg = "#3c3836" })
+      vim.api.nvim_set_hl(0, "AlphaKey",    { fg = "#d65d0e", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaDesc",   { fg = "#665c54" })
+      vim.api.nvim_set_hl(0, "AlphaDot",    { fg = "#3c3836" })
+
+      -- Info dinámica
+      local ver     = "v" .. vim.version().major .. "." .. vim.version().minor .. "." .. vim.version().patch
+      local plugins = require("lazy").stats().count .. " plugins"
+      local date    = os.date("%a %d %b"):lower()
+      local time    = os.date("%H:%M")
+
+      -- Acciones: { key, desc, cmd }
+      local actions = {
+        { "f", "find file",    "<cmd>Telescope find_files<cr>" },
+        { "r", "recent",       "<cmd>Telescope oldfiles<cr>" },
+        { "g", "grep",         "<cmd>Telescope live_grep<cr>" },
+        { "e", "explorer",     "<cmd>NvimTreeToggle<cr>" },
+        { "l", "lazy",         "<cmd>Lazy<cr>" },
+        { "q", "quit",         "<cmd>qa<cr>" },
       }
 
-      dash.section.buttons.val = {
-        dash.button("f", "  find file",    "<cmd>Telescope find_files<cr>"),
-        dash.button("r", "  recent",       "<cmd>Telescope oldfiles<cr>"),
-        dash.button("g", "  grep",         "<cmd>Telescope live_grep<cr>"),
-        dash.button("e", "  explorer",     "<cmd>NvimTreeToggle<cr>"),
-        dash.button("l", "  lazy",         "<cmd>Lazy<cr>"),
-        dash.button("q", "  quit",         "<cmd>qa<cr>"),
-      }
-
-      for _, btn in ipairs(dash.section.buttons.val) do
-        btn.opts.hl           = "GruvboxFg3"
-        btn.opts.hl_shortcut  = "GruvboxOrange"
-        btn.opts.width        = 28
+      -- Construir botones con highlight mixto por columna
+      local buttons = {}
+      for _, a in ipairs(actions) do
+        local btn = {
+          type = "button",
+          val  = "  " .. a[1] .. "  " .. a[2],
+          on_press = function() vim.cmd(a[3]:sub(6, -3)) end,
+          opts = {
+            position   = "left",
+            shortcut   = a[1],
+            cursor     = 3,
+            width      = 30,
+            align_shortcut = "left",
+            hl_shortcut = { { "AlphaKey", 2, 3 } },
+            hl = { { "AlphaDesc", 5, 5 + #a[2] } },
+            keymap = { "n", a[1], a[3], { noremap = true, silent = true } },
+          },
+        }
+        table.insert(buttons, btn)
       end
 
-      dash.section.footer.val  = ""
-      dash.opts.layout = {
-        { type = "padding", val = 4 },
-        dash.section.header,
-        { type = "padding", val = 1 },
-        dash.section.buttons,
-        { type = "padding", val = 1 },
-        dash.section.footer,
-      }
-
-      alpha.setup(dash.opts)
+      alpha.setup({
+        layout = {
+          { type = "padding", val = 6 },
+          {
+            type = "text",
+            val  = { "  sazar" },
+            opts = { hl = "AlphaName", position = "left" },
+          },
+          { type = "padding", val = 1 },
+          {
+            type = "text",
+            val  = { "  " .. ver .. "  ·  " .. plugins .. "  ·  " .. date .. "  ·  " .. time },
+            opts = { hl = "AlphaInfo", position = "left" },
+          },
+          { type = "padding", val = 1 },
+          {
+            type = "text",
+            val  = { "  ──────────────────────────" },
+            opts = { hl = "AlphaSep", position = "left" },
+          },
+          { type = "padding", val = 1 },
+          { type = "group", val = buttons, opts = { spacing = 0 } },
+          { type = "padding", val = 2 },
+        },
+        opts = { noautocmd = true },
+      })
     end,
   },
 
