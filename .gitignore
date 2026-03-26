@@ -1,0 +1,10 @@
+# Plugins instalados por lazy.nvim (se reinstalan automáticamente)
+plugin/
+
+# Directorio de datos de lazy
+# lazy-lock.json se INCLUYE para reproducibilidad
+
+# Archivos temporales
+*.swp
+*.swo
+.DS_Store
