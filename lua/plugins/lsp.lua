@@ -79,21 +79,60 @@ return {
     config = function()
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-      -- Diagnósticos (virtual_text lo maneja tiny-inline-diagnostic)
+      -- ── Highlight groups para row completo ──────────
+      -- Fondo tintado: cubre toda la línea con error/warn/hint/info
+      vim.api.nvim_set_hl(0, "DiagnosticLineError", { bg = "#2d1b1b" })
+      vim.api.nvim_set_hl(0, "DiagnosticLineWarn",  { bg = "#2d220e" })
+      vim.api.nvim_set_hl(0, "DiagnosticLineHint",  { bg = "#1b2a1e" })
+      vim.api.nvim_set_hl(0, "DiagnosticLineInfo",  { bg = "#1b242d" })
+
+      -- Virtual text (fin de línea) con fondo tintado + ícono
+      vim.api.nvim_set_hl(0, "DiagnosticVirtualTextError", { fg = "#fb4934", bg = "#2d1b1b", italic = false })
+      vim.api.nvim_set_hl(0, "DiagnosticVirtualTextWarn",  { fg = "#fabd2f", bg = "#2d220e", italic = false })
+      vim.api.nvim_set_hl(0, "DiagnosticVirtualTextHint",  { fg = "#8ec07c", bg = "#1b2a1e", italic = false })
+      vim.api.nvim_set_hl(0, "DiagnosticVirtualTextInfo",  { fg = "#83a598", bg = "#1b242d", italic = false })
+
       vim.diagnostic.config({
-        virtual_text     = false,
-        signs            = true,
+        -- Virtual text siempre visible en todas las líneas
+        virtual_text = {
+          spacing = 4,
+          prefix  = "",
+          format  = function(d)
+            local icons = {
+              [vim.diagnostic.severity.ERROR] = " ",
+              [vim.diagnostic.severity.WARN]  = " ",
+              [vim.diagnostic.severity.HINT]  = "󰌵 ",
+              [vim.diagnostic.severity.INFO]  = " ",
+            }
+            return (icons[d.severity] or "") .. d.message
+          end,
+        },
+        -- Signs con linehl para pintar el row completo
+        signs = {
+          text = {
+            [vim.diagnostic.severity.ERROR] = " ",
+            [vim.diagnostic.severity.WARN]  = " ",
+            [vim.diagnostic.severity.HINT]  = "󰌵",
+            [vim.diagnostic.severity.INFO]  = " ",
+          },
+          linehl = {
+            [vim.diagnostic.severity.ERROR] = "DiagnosticLineError",
+            [vim.diagnostic.severity.WARN]  = "DiagnosticLineWarn",
+            [vim.diagnostic.severity.HINT]  = "DiagnosticLineHint",
+            [vim.diagnostic.severity.INFO]  = "DiagnosticLineInfo",
+          },
+          numhl = {
+            [vim.diagnostic.severity.ERROR] = "DiagnosticVirtualTextError",
+            [vim.diagnostic.severity.WARN]  = "DiagnosticVirtualTextWarn",
+            [vim.diagnostic.severity.HINT]  = "DiagnosticVirtualTextHint",
+            [vim.diagnostic.severity.INFO]  = "DiagnosticVirtualTextInfo",
+          },
+        },
         underline        = true,
         update_in_insert = false,
         severity_sort    = true,
         float            = { border = "single", source = "always" },
       })
-
-      local signs = { Error = " ", Warn = " ", Hint = "󰌵 ", Info = " " }
-      for type, icon in pairs(signs) do
-        local hl = "DiagnosticSign" .. type
-        vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
-      end
 
       -- ── Servidores básicos (sin config especial) ──
       local servers = {

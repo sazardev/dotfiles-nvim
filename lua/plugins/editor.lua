@@ -113,27 +113,46 @@ return {
     end,
   },
 
-  -- ── Which-key — muestra grupos de atajos ───────
+  -- ── Which-key — grupos de atajos flat Gruvbox ──
   {
     "folke/which-key.nvim",
-    event = "VeryLazy",
-    opts  = { win = { border = "single" } },
+    event  = "VeryLazy",
+    opts   = {
+      win = {
+        border  = "none",
+        padding = { 1, 2 },
+        wo      = { winblend = 0 },
+      },
+      layout  = { spacing = 5 },
+      icons   = { separator = "→", group = "", breadcrumb = "›" },
+      show_help = false,
+    },
     config = function(_, opts)
       local wk = require("which-key")
       wk.setup(opts)
+
+      -- Colores Gruvbox flat (mismo bg que terminal)
+      vim.api.nvim_set_hl(0, "WhichKey",          { fg = "#d65d0e", bg = "#1d2021" })
+      vim.api.nvim_set_hl(0, "WhichKeyDesc",      { fg = "#ebdbb2", bg = "#1d2021" })
+      vim.api.nvim_set_hl(0, "WhichKeyGroup",     { fg = "#83a598", bg = "#1d2021", bold = true })
+      vim.api.nvim_set_hl(0, "WhichKeyNormal",    { bg = "#1d2021" })
+      vim.api.nvim_set_hl(0, "WhichKeyFloat",     { bg = "#1d2021" })
+      vim.api.nvim_set_hl(0, "WhichKeyBorder",    { fg = "#3c3836", bg = "#1d2021" })
+      vim.api.nvim_set_hl(0, "WhichKeySeparator", { fg = "#504945", bg = "#1d2021" })
+      vim.api.nvim_set_hl(0, "WhichKeyValue",     { fg = "#928374", bg = "#1d2021" })
+
       wk.add({
-        { "<leader>a",  group = "AI (Copilot)" },
-        { "<leader>D",  group = "Debug (DAP)" },
-        { "<leader>d",  group = "Diagnostics" },
-        { "<leader>e",  desc  = "File Explorer" },
-        { "<leader>f",  group = "Find" },
-        { "<leader>F",  group = "Flutter" },
-        { "<leader>g",  group = "Go" },
-        { "<leader>h",  group = "Git Hunks" },
-        { "<leader>r",  group = "Refactor / LSP" },
-        { "<leader>s",  group = "Search & Replace" },
-        { "<leader>T",  group = "Tests" },
-        { "<leader>t",  group = "Terminal" },
+        { "<leader>a", group = "ai" },
+        { "<leader>D", group = "debug" },
+        { "<leader>d", group = "diagnostics" },
+        { "<leader>f", group = "find" },
+        { "<leader>F", group = "flutter" },
+        { "<leader>g", group = "go" },
+        { "<leader>h", group = "git hunks" },
+        { "<leader>r", group = "rename" },
+        { "<leader>s", group = "search/replace" },
+        { "<leader>T", group = "tests" },
+        { "<leader>t", group = "terminal" },
       })
     end,
   },
@@ -291,19 +310,6 @@ return {
     },
   },
 
-  -- ── Tiny Inline Diagnostic — Error Lens style ──
-  {
-    "rachartier/tiny-inline-diagnostic.nvim",
-    event    = "LspAttach",
-    priority = 1000,
-    config   = function()
-      vim.diagnostic.config({ virtual_text = false })
-      require("tiny-inline-diagnostic").setup({
-        preset  = "minimal",
-        options = { show_source = false, multilines = false },
-      })
-    end,
-  },
 
   -- ── Trouble — panel de diagnósticos ────────────
   {
