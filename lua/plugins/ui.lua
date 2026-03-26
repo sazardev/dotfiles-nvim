@@ -1,79 +1,111 @@
 -- ══════════════════════════════════════════════════
--- UI: dashboard, statusline, bufferline, file tree
+-- UI — flat, minimal, Gruvbox hard dark
+-- Sin bordes redondeados, sin sombras, sin fondo
+-- Coherente con Hyprland + Waybar + Kitty
 -- ══════════════════════════════════════════════════
 return {
-  -- ── Alpha — dashboard de inicio ────────────────
+  -- ── Alpha — dashboard minimalista ──────────────
   {
     "goolord/alpha-nvim",
     event        = "VimEnter",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      local alpha   = require("alpha")
-      local dash    = require("alpha.themes.dashboard")
+      local alpha = require("alpha")
+      local dash  = require("alpha.themes.dashboard")
 
-      -- Header
       dash.section.header.val = {
-        "                                                     ",
-        "  ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗",
-        "  ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║",
-        "  ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║",
-        "  ██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║",
-        "  ██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║",
-        "  ╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝",
-        "                                                     ",
+        "",
+        "  nvim",
+        "",
       }
-      dash.section.header.opts.hl = "GruvboxOrange"
+      dash.section.header.opts = {
+        hl     = "GruvboxOrangeBold",
+        position = "left",
+      }
 
-      -- Botones
       dash.section.buttons.val = {
-        dash.button("f", "  Find File",      "<cmd>Telescope find_files<cr>"),
-        dash.button("r", "  Recent Files",   "<cmd>Telescope oldfiles<cr>"),
-        dash.button("g", "  Live Grep",      "<cmd>Telescope live_grep<cr>"),
-        dash.button("e", "  Explorer",       "<cmd>NvimTreeToggle<cr>"),
-        dash.button("l", "󰒲  Lazy",           "<cmd>Lazy<cr>"),
-        dash.button("m", "  Mason",          "<cmd>Mason<cr>"),
-        dash.button("q", "  Quit",           "<cmd>qa<cr>"),
+        dash.button("f", "  find file",    "<cmd>Telescope find_files<cr>"),
+        dash.button("r", "  recent",       "<cmd>Telescope oldfiles<cr>"),
+        dash.button("g", "  grep",         "<cmd>Telescope live_grep<cr>"),
+        dash.button("e", "  explorer",     "<cmd>NvimTreeToggle<cr>"),
+        dash.button("l", "  lazy",         "<cmd>Lazy<cr>"),
+        dash.button("q", "  quit",         "<cmd>qa<cr>"),
       }
 
-      -- Colores Gruvbox para botones
-      for _, button in ipairs(dash.section.buttons.val) do
-        button.opts.hl        = "GruvboxBlue"
-        button.opts.hl_shortcut = "GruvboxOrange"
+      for _, btn in ipairs(dash.section.buttons.val) do
+        btn.opts.hl           = "GruvboxFg3"
+        btn.opts.hl_shortcut  = "GruvboxOrange"
+        btn.opts.width        = 28
       end
 
-      -- Footer con versión de Neovim
-      dash.section.footer.val = "Neovim v" .. tostring(vim.version())
-      dash.section.footer.opts.hl = "GruvboxGray"
+      dash.section.footer.val  = ""
+      dash.opts.layout = {
+        { type = "padding", val = 4 },
+        dash.section.header,
+        { type = "padding", val = 1 },
+        dash.section.buttons,
+        { type = "padding", val = 1 },
+        dash.section.footer,
+      }
 
-      dash.opts.noautocmd = true
       alpha.setup(dash.opts)
     end,
   },
 
-  -- ── Lualine — statusline ────────────────────────
+  -- ── Lualine — flat, sin secciones con fondo ────
   {
     "nvim-lualine/lualine.nvim",
     event = "VeryLazy",
-    opts  = {
-      options = {
-        theme                  = "gruvbox",
-        component_separators   = { left = "", right = "" },
-        section_separators     = { left = "", right = "" },
-        globalstatus           = true,
-        disabled_filetypes     = { statusline = { "NvimTree", "alpha" } },
-      },
-      sections = {
-        lualine_a = { { "mode", upper = true } },
-        lualine_b = { "branch", "diff", "diagnostics" },
-        lualine_c = { { "filename", path = 1 } },
-        lualine_x = { "encoding", "fileformat", "filetype" },
-        lualine_y = { "progress" },
-        lualine_z = { "location" },
-      },
-    },
+    config = function()
+      -- Tema flat: mismo fondo que la terminal (#1d2021)
+      -- Solo el modo cambia de color, sin bloques de fondo
+      local colors = {
+        bg      = "#1d2021",
+        fg      = "#a89984",
+        fg_dim  = "#504945",
+        orange  = "#d65d0e",
+        green   = "#b8bb26",
+        yellow  = "#fabd2f",
+        red     = "#fb4934",
+        blue    = "#83a598",
+        purple  = "#d3869b",
+      }
+
+      local flat = {
+        normal   = { a = { fg = colors.orange, bg = colors.bg, gui = "bold" }, b = { fg = colors.fg,  bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+        insert   = { a = { fg = colors.green,  bg = colors.bg, gui = "bold" }, b = { fg = colors.fg,  bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+        visual   = { a = { fg = colors.yellow, bg = colors.bg, gui = "bold" }, b = { fg = colors.fg,  bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+        replace  = { a = { fg = colors.red,    bg = colors.bg, gui = "bold" }, b = { fg = colors.fg,  bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+        command  = { a = { fg = colors.blue,   bg = colors.bg, gui = "bold" }, b = { fg = colors.fg,  bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+        terminal = { a = { fg = colors.purple, bg = colors.bg, gui = "bold" }, b = { fg = colors.fg,  bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+        inactive = { a = { fg = colors.fg_dim, bg = colors.bg },               b = { fg = colors.fg_dim, bg = colors.bg }, c = { fg = colors.fg_dim, bg = colors.bg } },
+      }
+
+      require("lualine").setup({
+        options = {
+          theme                = flat,
+          component_separators = { left = "│", right = "│" },
+          section_separators   = { left = "",  right = "" },
+          globalstatus         = true,
+          disabled_filetypes   = { statusline = { "NvimTree", "alpha" } },
+        },
+        sections = {
+          lualine_a = { { "mode", fmt = function(s) return s:lower() end } },
+          lualine_b = { "branch", { "diff", symbols = { added = " ", modified = " ", removed = " " } } },
+          lualine_c = { { "filename", path = 1, symbols = { modified = "  ", readonly = " ", unnamed = "…" } } },
+          lualine_x = { { "diagnostics", symbols = { error = " ", warn = " ", hint = "󰌵 ", info = " " } }, "filetype" },
+          lualine_y = { "progress" },
+          lualine_z = { "location" },
+        },
+        inactive_sections = {
+          lualine_c = { { "filename", path = 1 } },
+          lualine_x = { "location" },
+        },
+      })
+    end,
   },
 
-  -- ── Bufferline — pestañas ───────────────────────
+  -- ── Bufferline ─────────────────────────────────
   {
     "akinsho/bufferline.nvim",
     event = "VeryLazy",
@@ -85,51 +117,50 @@ return {
         show_close_icon         = false,
         always_show_bufferline  = false,
         offsets = {
-          { filetype = "NvimTree", text = "Explorer", text_align = "left", separator = true },
+          { filetype = "NvimTree", text = "explorer", text_align = "left", separator = true },
         },
       },
       highlights = {
         fill               = { bg = "#1d2021" },
-        background         = { fg = "#7c6f64", bg = "#282828" },
-        tab                = { fg = "#7c6f64", bg = "#282828" },
-        tab_selected       = { fg = "#ebdbb2", bg = "#504945" },
-        buffer_visible     = { fg = "#928374", bg = "#3c3836" },
-        buffer_selected    = { fg = "#fbf1c7", bg = "#504945", bold = true },
-        separator          = { fg = "#1d2021", bg = "#282828" },
-        separator_selected = { fg = "#1d2021", bg = "#504945" },
-        indicator_selected = { fg = "#d65d0e", bg = "#504945" },
-        modified           = { fg = "#d79921", bg = "#282828" },
-        modified_selected  = { fg = "#fabd2f", bg = "#504945" },
+        background         = { fg = "#504945", bg = "#1d2021" },
+        tab                = { fg = "#504945", bg = "#1d2021" },
+        tab_selected       = { fg = "#ebdbb2", bg = "#1d2021" },
+        buffer_visible     = { fg = "#665c54", bg = "#1d2021" },
+        buffer_selected    = { fg = "#ebdbb2", bg = "#1d2021", bold = true, italic = false },
+        separator          = { fg = "#3c3836", bg = "#1d2021" },
+        separator_selected = { fg = "#3c3836", bg = "#1d2021" },
+        indicator_selected = { fg = "#d65d0e", bg = "#1d2021" },
+        modified           = { fg = "#d79921", bg = "#1d2021" },
+        modified_selected  = { fg = "#fabd2f", bg = "#1d2021" },
       },
     },
   },
 
-  -- ── NvimTree — explorador de archivos ──────────
+  -- ── NvimTree ────────────────────────────────────
   {
     "nvim-tree/nvim-tree.lua",
     cmd          = { "NvimTreeToggle", "NvimTreeFocus" },
     dependencies = { "nvim-tree/nvim-web-devicons" },
     opts = {
-      view     = { width = 30, side = "left" },
+      view     = { width = 28, side = "left" },
       renderer = {
-        group_empty   = true,
-        highlight_git = true,
+        group_empty         = true,
+        highlight_git       = true,
+        indent_markers      = { enable = true, icons = { corner = "└", edge = "│", item = "│", none = " " } },
         icons = {
-          show = { git = true, file = true, folder = true, folder_arrow = true },
+          show              = { git = true, file = true, folder = true, folder_arrow = false },
+          git_placement     = "after",
         },
       },
-      filters = { dotfiles = false },
-      git     = { enable = true, ignore = false },
-      actions = {
-        open_file = {
-          quit_on_open  = false,
-          resize_window = false,
-        },
+      filters    = { dotfiles = false },
+      git        = { enable = true, ignore = false },
+      actions    = {
+        open_file = { quit_on_open = false, resize_window = false },
       },
     },
   },
 
-  -- ── Indent Blankline — guías de indentado ──────
+  -- ── Indent Blankline — guías sutiles ───────────
   {
     "lukas-reineke/indent-blankline.nvim",
     main  = "ibl",
@@ -139,8 +170,8 @@ return {
       scope  = { enabled = true, highlight = "IblScope" },
     },
     config = function(_, opts)
-      vim.api.nvim_set_hl(0, "IblIndent", { fg = "#3c3836" })
-      vim.api.nvim_set_hl(0, "IblScope",  { fg = "#504945" })
+      vim.api.nvim_set_hl(0, "IblIndent", { fg = "#282828" })
+      vim.api.nvim_set_hl(0, "IblScope",  { fg = "#3c3836" })
       require("ibl").setup(opts)
     end,
   },

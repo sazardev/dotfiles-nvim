@@ -45,9 +45,6 @@ return {
       indent       = { enable = true },
       auto_install = true,
     },
-    config = function(_, opts)
-      require("nvim-treesitter.configs").setup(opts)
-    end,
   },
 
   -- ── Treesitter Context — muestra función/clase actual ──
@@ -302,8 +299,8 @@ return {
     config   = function()
       vim.diagnostic.config({ virtual_text = false })
       require("tiny-inline-diagnostic").setup({
-        preset  = "powerline",
-        options = { show_source = true, multilines = true },
+        preset  = "minimal",
+        options = { show_source = false, multilines = false },
       })
     end,
   },
