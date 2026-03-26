@@ -11,77 +11,102 @@ return {
     config = function()
       local alpha = require("alpha")
 
-      -- Highlight groups propios (mismos colores que waybar)
-      vim.api.nvim_set_hl(0, "AlphaName",   { fg = "#d65d0e", bold = true })
-      vim.api.nvim_set_hl(0, "AlphaInfo",   { fg = "#504945" })
-      vim.api.nvim_set_hl(0, "AlphaSep",    { fg = "#3c3836" })
-      vim.api.nvim_set_hl(0, "AlphaKey",    { fg = "#d65d0e", bold = true })
-      vim.api.nvim_set_hl(0, "AlphaDesc",   { fg = "#665c54" })
-      vim.api.nvim_set_hl(0, "AlphaDot",    { fg = "#3c3836" })
+      vim.api.nvim_set_hl(0, "AlphaName",    { fg = "#d65d0e", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaInfo",    { fg = "#504945" })
+      vim.api.nvim_set_hl(0, "AlphaUpdate",  { fg = "#b8bb26" })
+      vim.api.nvim_set_hl(0, "AlphaSep",     { fg = "#3c3836" })
+      vim.api.nvim_set_hl(0, "AlphaKey",     { fg = "#d65d0e", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaDesc",    { fg = "#665c54" })
 
       -- Info dinámica
-      local ver     = "v" .. vim.version().major .. "." .. vim.version().minor .. "." .. vim.version().patch
-      local plugins = require("lazy").stats().count .. " plugins"
-      local date    = os.date("%a %d %b"):lower()
-      local time    = os.date("%H:%M")
+      local v       = vim.version()
+      local ver     = "nvim v" .. v.major .. "." .. v.minor .. "." .. v.patch
+      local stats   = require("lazy").stats()
+      local plugins = stats.count .. " plugins"
+      local date    = os.date("%a %d %b · %H:%M"):lower()
 
-      -- Acciones: { key, desc, cmd }
-      local actions = {
-        { "f", "find file",    "<cmd>Telescope find_files<cr>" },
-        { "r", "recent",       "<cmd>Telescope oldfiles<cr>" },
-        { "g", "grep",         "<cmd>Telescope live_grep<cr>" },
-        { "e", "explorer",     "<cmd>NvimTreeToggle<cr>" },
-        { "l", "lazy",         "<cmd>Lazy<cr>" },
-        { "q", "quit",         "<cmd>qa<cr>" },
-      }
+      local ok_ls, ls = pcall(require, "lazy.status")
+      local updates = (ok_ls and ls.has_updates()) and ls.updates() or nil
 
-      -- Construir botones con highlight mixto por columna
-      local buttons = {}
-      for _, a in ipairs(actions) do
-        local btn = {
-          type = "button",
-          val  = "  " .. a[1] .. "  " .. a[2],
-          on_press = function() vim.cmd(a[3]:sub(6, -3)) end,
-          opts = {
-            position   = "left",
-            shortcut   = a[1],
-            cursor     = 3,
-            width      = 30,
-            align_shortcut = "left",
-            hl_shortcut = { { "AlphaKey", 2, 3 } },
-            hl = { { "AlphaDesc", 5, 5 + #a[2] } },
-            keymap = { "n", a[1], a[3], { noremap = true, silent = true } },
+      -- Función para crear botón sin duplicar la tecla
+      -- val = "key  descripción", sin shortcut en opts
+      local function btn(key, desc, action)
+        return {
+          type     = "button",
+          val      = key .. "  " .. desc,
+          on_press = function() vim.cmd(action) end,
+          opts     = {
+            position = "center",
+            cursor   = 0,
+            width    = 34,
+            hl       = {
+              { "AlphaKey",  0, #key },
+              { "AlphaDesc", #key + 2, #key + 2 + #desc },
+            },
+            keymap = { "n", key, "<cmd>" .. action .. "<cr>",
+                       { noremap = true, silent = true, nowait = true } },
           },
         }
-        table.insert(buttons, btn)
       end
 
-      alpha.setup({
-        layout = {
-          { type = "padding", val = 6 },
-          {
-            type = "text",
-            val  = { "  sazar" },
-            opts = { hl = "AlphaName", position = "left" },
-          },
-          { type = "padding", val = 1 },
-          {
-            type = "text",
-            val  = { "  " .. ver .. "  ·  " .. plugins .. "  ·  " .. date .. "  ·  " .. time },
-            opts = { hl = "AlphaInfo", position = "left" },
-          },
-          { type = "padding", val = 1 },
-          {
-            type = "text",
-            val  = { "  ──────────────────────────" },
-            opts = { hl = "AlphaSep", position = "left" },
-          },
-          { type = "padding", val = 1 },
-          { type = "group", val = buttons, opts = { spacing = 0 } },
-          { type = "padding", val = 2 },
-        },
-        opts = { noautocmd = true },
-      })
+      local sep = {
+        type = "text",
+        val  = { string.rep("─", 34) },
+        opts = { hl = "AlphaSep", position = "center" },
+      }
+
+      -- Grupo navegación
+      local nav = {
+        btn("f", "find file",        "Telescope find_files"),
+        btn("r", "recent",           "Telescope oldfiles"),
+        btn("g", "grep",             "Telescope live_grep"),
+        btn("b", "buffers",          "Telescope buffers"),
+        btn("e", "explorer",         "NvimTreeToggle"),
+        btn("s", "symbols",          "Telescope lsp_document_symbols"),
+        btn("t", "terminal",         "ToggleTerm direction=float"),
+      }
+
+      -- Grupo sistema / updates
+      local sys = {
+        btn("u", "update  —  lazy sync",    "Lazy sync"),
+        btn("p", "plugins —  lazy",         "Lazy"),
+        btn("m", "mason   —  lsp tools",    "Mason"),
+        btn("c", "config  —  nvim",         "e " .. vim.fn.stdpath("config") .. "/init.lua"),
+        btn("h", "health  —  checkhealth",  "checkhealth"),
+        btn("q", "quit",                    "qa"),
+      }
+
+      -- Info line: separada en dos líneas para legibilidad
+      local info_line = ver .. "  ·  " .. plugins .. "  ·  " .. date
+
+      local layout = {
+        { type = "padding", val = 5 },
+        { type = "text", val = { "sazar" },
+          opts = { hl = "AlphaName", position = "center" } },
+        { type = "padding", val = 1 },
+        { type = "text", val = { info_line },
+          opts = { hl = "AlphaInfo", position = "center" } },
+      }
+
+      -- Mostrar updates disponibles si los hay
+      if updates then
+        table.insert(layout, {
+          type = "text", val = { updates .. " updates available" },
+          opts = { hl = "AlphaUpdate", position = "center" },
+        })
+      end
+
+      table.insert(layout, { type = "padding", val = 1 })
+      table.insert(layout, sep)
+      table.insert(layout, { type = "padding", val = 1 })
+      table.insert(layout, { type = "group", val = nav, opts = { spacing = 0 } })
+      table.insert(layout, { type = "padding", val = 1 })
+      table.insert(layout, sep)
+      table.insert(layout, { type = "padding", val = 1 })
+      table.insert(layout, { type = "group", val = sys, opts = { spacing = 0 } })
+      table.insert(layout, { type = "padding", val = 3 })
+
+      alpha.setup({ layout = layout, opts = { noautocmd = true } })
     end,
   },
 
