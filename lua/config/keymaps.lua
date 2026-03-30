@@ -43,7 +43,8 @@ map("n", "<Esc>", "<cmd>nohlsearch<cr>")
 map("x", "<leader>p", '"_dP', { desc = "Paste (no yank)" })
 
 -- ── Explorer ─────────────────────────────────────
-map("n", "<leader>e", "<cmd>NvimTreeToggle<cr>", { desc = "File Explorer" })
+map("n", "<leader>e",  "<cmd>NvimTreeToggle<cr>",  { desc = "File Explorer" })
+map("n", "<leader>0",  "<cmd>Alpha<cr>",           { desc = "dashboard" })
 
 -- ── Find / Telescope ─────────────────────────────
 map("n", "<leader>ff", "<cmd>Telescope find_files<cr>",           { desc = "Find Files" })

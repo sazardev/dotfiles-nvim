@@ -157,6 +157,7 @@ return {
         { "<leader>T", group = "tests" },
         { "<leader>t", group = "terminal" },
         { "<leader>U", group = "ui toggles" },
+        { "<leader>0", desc = "dashboard" },
       })
     end,
   },

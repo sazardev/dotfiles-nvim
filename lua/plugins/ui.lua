@@ -367,6 +367,7 @@ return {
       renderer = {
         group_empty         = true,
         highlight_git       = true,
+        highlight_modified  = "name",
         indent_markers      = { enable = true, icons = { corner = "└", edge = "│", item = "│", none = " " } },
         icons = {
           show              = { git = true, file = true, folder = true, folder_arrow = false },
@@ -374,7 +375,7 @@ return {
         },
       },
       filters    = { dotfiles = false },
-      git        = { enable = true, ignore = false },
+      git        = { enable = true, ignore = false, show_on_dirs = true, show_on_open_dirs = true },
       actions    = {
         open_file = { quit_on_open = false, resize_window = false },
       },
