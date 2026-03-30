@@ -11,14 +11,20 @@ return {
     config = function()
       local alpha = require("alpha")
 
-      vim.api.nvim_set_hl(0, "AlphaName",    { fg = "#d65d0e", bold = true })
-      vim.api.nvim_set_hl(0, "AlphaInfo",    { fg = "#504945" })
-      vim.api.nvim_set_hl(0, "AlphaUpdate",  { fg = "#b8bb26" })
-      vim.api.nvim_set_hl(0, "AlphaSep",     { fg = "#3c3836" })
-      vim.api.nvim_set_hl(0, "AlphaKey",     { fg = "#d65d0e", bold = true })
-      vim.api.nvim_set_hl(0, "AlphaDesc",    { fg = "#665c54" })
+      vim.api.nvim_set_hl(0, "AlphaName",       { fg = "#d65d0e", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaInfo",       { fg = "#504945" })
+      vim.api.nvim_set_hl(0, "AlphaUpdate",     { fg = "#b8bb26" })
+      vim.api.nvim_set_hl(0, "AlphaSep",        { fg = "#3c3836" })
+      vim.api.nvim_set_hl(0, "AlphaKey",        { fg = "#d65d0e", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaDesc",       { fg = "#665c54" })
+      vim.api.nvim_set_hl(0, "AlphaGitProject", { fg = "#fabd2f", bold = true })
+      vim.api.nvim_set_hl(0, "AlphaGitBranch",  { fg = "#83a598" })
+      vim.api.nvim_set_hl(0, "AlphaGitAhead",   { fg = "#b8bb26" })
+      vim.api.nvim_set_hl(0, "AlphaGitBehind",  { fg = "#fb4934" })
+      vim.api.nvim_set_hl(0, "AlphaGitDirty",   { fg = "#d65d0e" })
+      vim.api.nvim_set_hl(0, "AlphaGitClean",   { fg = "#504945" })
 
-      -- Info dinámica
+      -- ── Info dinámica ──────────────────────────────
       local v       = vim.version()
       local ver     = "nvim v" .. v.major .. "." .. v.minor .. "." .. v.patch
       local stats   = require("lazy").stats()
@@ -28,8 +34,66 @@ return {
       local ok_ls, ls = pcall(require, "lazy.status")
       local updates = (ok_ls and ls.has_updates()) and ls.updates() or nil
 
-      -- Función para crear botón sin duplicar la tecla
-      -- val = "key  descripción", sin shortcut en opts
+      -- ── Git info ───────────────────────────────────
+      local function git_info()
+        local function run(cmd)
+          local out = vim.fn.system(cmd)
+          return vim.trim(out)
+        end
+
+        -- Check we're inside a git repo
+        local root = run("git rev-parse --show-toplevel 2>/dev/null")
+        if root == "" or vim.v.shell_error ~= 0 then return nil end
+
+        local project  = vim.fn.fnamemodify(root, ":t")
+        local branch   = run("git rev-parse --abbrev-ref HEAD 2>/dev/null")
+
+        -- Branches (remote + local, deduped, sorted, max 5)
+        local raw_branches = run("git branch -a --format='%(refname:short)' 2>/dev/null")
+        local seen, branch_list = {}, {}
+        for b in raw_branches:gmatch("[^\n]+") do
+          local clean = b:gsub("^origin/", ""):gsub("^HEAD.*", "")
+          clean = vim.trim(clean)
+          if clean ~= "" and not seen[clean] then
+            seen[clean] = true
+            table.insert(branch_list, clean)
+          end
+        end
+        table.sort(branch_list)
+        local shown = {}
+        for i, b in ipairs(branch_list) do
+          if i > 5 then
+            table.insert(shown, "+" .. (#branch_list - 5) .. " more")
+            break
+          end
+          table.insert(shown, b == branch and ("* " .. b) or b)
+        end
+
+        -- Ahead / behind vs upstream
+        local ahead_behind = run("git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null")
+        local ahead, behind = ahead_behind:match("(%d+)%s+(%d+)")
+        ahead  = tonumber(ahead)  or 0
+        behind = tonumber(behind) or 0
+
+        -- Dirty state: staged + unstaged
+        local dirty   = run("git status --porcelain 2>/dev/null")
+        local changes = 0
+        for _ in dirty:gmatch("\n") do changes = changes + 1 end
+        if dirty ~= "" then changes = changes + 1 end
+
+        return {
+          project  = project,
+          branch   = branch,
+          branches = table.concat(shown, "  ·  "),
+          ahead    = ahead,
+          behind   = behind,
+          changes  = changes,
+        }
+      end
+
+      local git = git_info()
+
+      -- ── Button factory ─────────────────────────────
       local function btn(key, desc, action)
         return {
           type     = "button",
@@ -49,50 +113,105 @@ return {
         }
       end
 
-      local sep = {
-        type = "text",
-        val  = { string.rep("─", 34) },
-        opts = { hl = "AlphaSep", position = "center" },
-      }
+      local function txt(val, hl)
+        return { type = "text", val = { val }, opts = { hl = hl or "AlphaInfo", position = "center" } }
+      end
 
-      -- Grupo navegación
+      local sep = txt(string.rep("─", 34), "AlphaSep")
+
+      -- ── Grupos ─────────────────────────────────────
       local nav = {
-        btn("f", "find file",        "Telescope find_files"),
-        btn("r", "recent",           "Telescope oldfiles"),
-        btn("g", "grep",             "Telescope live_grep"),
-        btn("b", "buffers",          "Telescope buffers"),
-        btn("e", "explorer",         "NvimTreeToggle"),
-        btn("s", "symbols",          "Telescope lsp_document_symbols"),
-        btn("t", "terminal",         "ToggleTerm direction=float"),
+        btn("f", "find file",    "Telescope find_files"),
+        btn("r", "recent",       "Telescope oldfiles"),
+        btn("g", "grep",         "Telescope live_grep"),
+        btn("b", "buffers",      "Telescope buffers"),
+        btn("e", "explorer",     "NvimTreeToggle"),
+        btn("s", "symbols",      "Telescope lsp_document_symbols"),
+        btn("t", "terminal",     "ToggleTerm direction=float"),
       }
 
-      -- Grupo sistema / updates
       local sys = {
-        btn("u", "update  —  lazy sync",    "Lazy sync"),
-        btn("p", "plugins —  lazy",         "Lazy"),
-        btn("m", "mason   —  lsp tools",    "Mason"),
-        btn("c", "config  —  nvim",         "e " .. vim.fn.stdpath("config") .. "/init.lua"),
-        btn("h", "health  —  checkhealth",  "checkhealth"),
-        btn("q", "quit",                    "qa"),
+        btn("u", "update",   "Lazy sync"),
+        btn("p", "plugins",  "Lazy"),
+        btn("m", "mason",    "Mason"),
+        btn("c", "config",   "e " .. vim.fn.stdpath("config") .. "/init.lua"),
+        btn("h", "health",   "checkhealth"),
+        btn("q", "quit",     "qa"),
       }
 
-      -- Info line: separada en dos líneas para legibilidad
-      local info_line = ver .. "  ·  " .. plugins .. "  ·  " .. date
-
+      -- ── Layout base ────────────────────────────────
       local layout = {
-        { type = "padding", val = 5 },
-        { type = "text", val = { "sazar" },
-          opts = { hl = "AlphaName", position = "center" } },
+        { type = "padding", val = 4 },
+        txt("sazar", "AlphaName"),
         { type = "padding", val = 1 },
-        { type = "text", val = { info_line },
-          opts = { hl = "AlphaInfo", position = "center" } },
+        txt(ver .. "  ·  " .. plugins .. "  ·  " .. date),
       }
 
-      -- Mostrar updates disponibles si los hay
       if updates then
+        table.insert(layout, txt("⟳ " .. updates .. " updates available", "AlphaUpdate"))
+      end
+
+      -- ── Sección git (solo si hay repo) ─────────────
+      if git then
+        local status_parts = {}
+        if git.behind > 0 then
+          table.insert(status_parts, { "↓ " .. git.behind .. " behind", "AlphaGitBehind" })
+        end
+        if git.ahead > 0 then
+          table.insert(status_parts, { "↑ " .. git.ahead .. " ahead", "AlphaGitAhead" })
+        end
+        if git.changes > 0 then
+          table.insert(status_parts, { "~ " .. git.changes .. " changed", "AlphaGitDirty" })
+        end
+        if #status_parts == 0 then
+          table.insert(status_parts, { "✓ clean", "AlphaGitClean" })
+        end
+
+        -- Build status string (plain text; color per-entry via hl array)
+        local status_str = ""
+        local status_hl  = {}
+        for _, part in ipairs(status_parts) do
+          if status_str ~= "" then
+            status_hl[#status_hl + 1] = { "AlphaInfo", #status_str, #status_str + 3 }
+            status_str = status_str .. "  ·  "
+          end
+          status_hl[#status_hl + 1] = { part[2], #status_str, #status_str + #part[1] }
+          status_str = status_str .. part[1]
+        end
+
+        table.insert(layout, { type = "padding", val = 1 })
+        table.insert(layout, sep)
+        table.insert(layout, { type = "padding", val = 1 })
+
+        -- Project name
         table.insert(layout, {
-          type = "text", val = { updates .. " updates available" },
-          opts = { hl = "AlphaUpdate", position = "center" },
+          type = "text",
+          val  = { " " .. git.project },
+          opts = { hl = "AlphaGitProject", position = "center" },
+        })
+
+        -- Branch
+        table.insert(layout, {
+          type = "text",
+          val  = { " " .. git.branch },
+          opts = { hl = "AlphaGitBranch", position = "center" },
+        })
+
+        -- Status (ahead/behind/dirty)
+        table.insert(layout, {
+          type = "text",
+          val  = { status_str },
+          opts = {
+            hl       = status_hl,
+            position = "center",
+          },
+        })
+
+        -- All branches
+        table.insert(layout, {
+          type = "text",
+          val  = { git.branches },
+          opts = { hl = "AlphaInfo", position = "center" },
         })
       end
 
