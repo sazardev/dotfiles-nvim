@@ -25,6 +25,9 @@ map("n", "<C-Right>", "<cmd>vertical resize +2<cr>", { desc = "Width +" })
 map("n", "<S-h>",      "<cmd>bprev<cr>",        { desc = "Prev Buffer" })
 map("n", "<S-l>",      "<cmd>bnext<cr>",        { desc = "Next Buffer" })
 map("n", "<leader>x",  "<cmd>bd<cr>",           { desc = "Close Buffer" })
+map("n", "<leader>bx", "<cmd>bd<cr>",           { desc = "Close" })
+map("n", "<leader>bw", "<cmd>w<cr><cmd>bd<cr>", { desc = "Save & Close" })
+map("n", "<leader>bq", "<cmd>bd!<cr>",          { desc = "Close (no save)" })
 map("n", "<leader>bo", "<cmd>%bd|e#|bd#<cr>",  { desc = "Close Others" })
 map("n", "<leader>bs", function() require("snacks").scratch() end, { desc = "Scratch Buffer" })
 
@@ -77,6 +80,54 @@ map("v", "<leader>af", "<cmd>CopilotChatFix<cr>",     { desc = "Fix" })
 map("n", "<leader>ar", "<cmd>CopilotChatReview<cr>",  { desc = "Review" })
 map("v", "<leader>ar", "<cmd>CopilotChatReview<cr>",  { desc = "Review" })
 
+-- ── AI Local / Qwen (Ollama) ─────────────────────
+-- Generar código: pide un prompt e inserta resultado bajo el cursor
+map("n", "<leader>aq", function()
+  local prompt = vim.fn.input("Qwen › ")
+  if prompt == "" then return end
+  vim.cmd("r !ai-code " .. vim.fn.shellescape(prompt))
+end, { desc = "Qwen: Generate" })
+
+-- Reemplazar selección visual con código generado
+map("v", "<leader>aq", function()
+  local prompt = vim.fn.input("Qwen › ")
+  if prompt == "" then return end
+  vim.cmd("'<,'>!ai-code " .. vim.fn.shellescape(prompt))
+end, { desc = "Qwen: Replace" })
+
+-- Explicar selección visual
+map("v", "<leader>aQ", function()
+  -- Guarda selección a /tmp, la pasa como contexto y muestra en split
+  vim.cmd("'<,'>w! /tmp/qwen_ctx.txt")
+  vim.cmd("botright 15new")
+  vim.cmd("r !cat /tmp/qwen_ctx.txt | ai-code --explain")
+  vim.bo.buftype    = "nofile"
+  vim.bo.bufhidden  = "wipe"
+  vim.bo.modifiable = false
+end, { desc = "Qwen: Explain" })
+
+-- Documentar selección visual (inserta doc block encima)
+map("v", "<leader>ad", function()
+  vim.cmd("'<,'>w! /tmp/qwen_ctx.txt")
+  -- Obtiene línea de inicio de la selección
+  local start_line = vim.fn.line("'<")
+  local doc = vim.fn.system("cat /tmp/qwen_ctx.txt | ai-code --doc")
+  local lines = vim.split(doc, "\n")
+  vim.api.nvim_buf_set_lines(0, start_line - 1, start_line - 1, false, lines)
+end, { desc = "Qwen: Document" })
+
+-- Preguntar sobre selección (modo libre)
+map("v", "<leader>aA", function()
+  local prompt = vim.fn.input("Qwen › ")
+  if prompt == "" then return end
+  vim.cmd("'<,'>w! /tmp/qwen_ctx.txt")
+  vim.cmd("botright 15new")
+  vim.cmd("r !cat /tmp/qwen_ctx.txt | ai-code " .. vim.fn.shellescape(prompt))
+  vim.bo.buftype    = "nofile"
+  vim.bo.bufhidden  = "wipe"
+  vim.bo.modifiable = false
+end, { desc = "Qwen: Ask about selection" })
+
 -- ── Go (lenguaje) ────────────────────────────────
 map("n", "<leader>gr", "<cmd>GoRun<cr>",          { desc = "Go Run" })
 map("n", "<leader>gb", "<cmd>GoBuild<cr>",         { desc = "Go Build" })
@@ -115,6 +166,123 @@ map("n", "<leader>GA", function()
     end
   end)
 end, { desc = "Add All & Commit" })
+
+-- Undo last commit (soft — keeps changes staged, like VS Code "Undo Last Commit")
+map("n", "<leader>Gu", function()
+  local out = vim.fn.system("git reset --soft HEAD~1 2>&1")
+  vim.notify(out ~= "" and out or "✓ Undo last commit (changes kept staged)", vim.log.levels.INFO)
+end, { desc = "Undo Last Commit" })
+
+-- Fetch all remotes
+map("n", "<leader>Ge", function()
+  vim.notify("⟳ Fetching...", vim.log.levels.INFO)
+  local out = vim.fn.system("git fetch --all --prune 2>&1")
+  vim.notify(out ~= "" and out or "✓ Fetch complete", vim.log.levels.INFO)
+end, { desc = "Fetch" })
+
+-- Stash push (with optional message)
+map("n", "<leader>Gs", function()
+  vim.ui.input({ prompt = "Stash message (optional): " }, function(msg)
+    local cmd = msg and msg ~= "" and ("git stash push -m " .. vim.fn.shellescape(msg)) or "git stash push"
+    local out = vim.fn.system(cmd .. " 2>&1")
+    vim.notify(out ~= "" and out or "✓ Stashed", vim.log.levels.INFO)
+  end)
+end, { desc = "Stash Push" })
+
+-- Stash pop
+map("n", "<leader>GS", function()
+  local out = vim.fn.system("git stash pop 2>&1")
+  vim.notify(out ~= "" and out or "✓ Stash popped", vim.log.levels.INFO)
+end, { desc = "Stash Pop" })
+
+-- Switch / checkout branch (picker from local branches)
+map("n", "<leader>Gk", function()
+  local branches = vim.fn.systemlist("git branch --format='%(refname:short)' 2>/dev/null")
+  if vim.tbl_isempty(branches) then
+    vim.notify("No branches found", vim.log.levels.WARN) return
+  end
+  vim.ui.select(branches, { prompt = "Switch to branch:" }, function(branch)
+    if not branch then return end
+    local out = vim.fn.system("git checkout " .. vim.fn.shellescape(branch) .. " 2>&1")
+    vim.notify(out ~= "" and out or "✓ Switched to " .. branch, vim.log.levels.INFO)
+  end)
+end, { desc = "Switch Branch" })
+
+-- Create new branch
+map("n", "<leader>Gn", function()
+  vim.ui.input({ prompt = "New branch name: " }, function(name)
+    if not name or name == "" then return end
+    local out = vim.fn.system("git checkout -b " .. vim.fn.shellescape(name) .. " 2>&1")
+    vim.notify(out ~= "" and out or "✓ Created & switched to " .. name, vim.log.levels.INFO)
+  end)
+end, { desc = "New Branch" })
+
+-- Delete branch (local, picker)
+map("n", "<leader>Gq", function()
+  local current = vim.fn.system("git branch --show-current"):gsub("\n", "")
+  local branches = vim.fn.systemlist("git branch --format='%(refname:short)' 2>/dev/null")
+  branches = vim.tbl_filter(function(b) return b ~= current end, branches)
+  if vim.tbl_isempty(branches) then
+    vim.notify("No other branches to delete", vim.log.levels.WARN) return
+  end
+  vim.ui.select(branches, { prompt = "Delete branch:" }, function(branch)
+    if not branch then return end
+    local out = vim.fn.system("git branch -d " .. vim.fn.shellescape(branch) .. " 2>&1")
+    vim.notify(out, vim.log.levels.INFO)
+  end)
+end, { desc = "Delete Branch" })
+
+-- Stage current file
+map("n", "<leader>Gw", function()
+  local file = vim.fn.expand("%")
+  local out = vim.fn.system("git add " .. vim.fn.shellescape(file) .. " 2>&1")
+  vim.notify(out ~= "" and out or "✓ Staged: " .. file, vim.log.levels.INFO)
+end, { desc = "Stage Current File" })
+
+-- Unstage all (git restore --staged .)
+map("n", "<leader>GU", function()
+  local out = vim.fn.system("git restore --staged . 2>&1")
+  vim.notify(out ~= "" and out or "✓ All changes unstaged", vim.log.levels.INFO)
+end, { desc = "Unstage All" })
+
+-- Discard all working tree changes (like VS Code "Discard All Changes")
+map("n", "<leader>GX", function()
+  vim.ui.input({ prompt = "Discard ALL changes? Type 'yes' to confirm: " }, function(ans)
+    if ans ~= "yes" then vim.notify("Cancelled", vim.log.levels.WARN) return end
+    local out = vim.fn.system("git restore . 2>&1")
+    vim.notify(out ~= "" and out or "✓ All changes discarded", vim.log.levels.INFO)
+  end)
+end, { desc = "Discard All Changes" })
+
+-- Merge branch into current (picker)
+map("n", "<leader>Gm", function()
+  local current = vim.fn.system("git branch --show-current"):gsub("\n", "")
+  local branches = vim.fn.systemlist("git branch --format='%(refname:short)' 2>/dev/null")
+  branches = vim.tbl_filter(function(b) return b ~= current end, branches)
+  if vim.tbl_isempty(branches) then
+    vim.notify("No other branches to merge", vim.log.levels.WARN) return
+  end
+  vim.ui.select(branches, { prompt = "Merge into " .. current .. ":" }, function(branch)
+    if not branch then return end
+    local out = vim.fn.system("git merge " .. vim.fn.shellescape(branch) .. " 2>&1")
+    vim.notify(out, vim.log.levels.INFO)
+  end)
+end, { desc = "Merge Branch" })
+
+-- Push with --set-upstream if needed (force-friendly)
+map("n", "<leader>GE", function()
+  local branch = vim.fn.system("git branch --show-current"):gsub("\n", "")
+  vim.notify("⟳ Pushing " .. branch .. "...", vim.log.levels.INFO)
+  local out = vim.fn.system("git push --set-upstream origin " .. vim.fn.shellescape(branch) .. " 2>&1")
+  vim.notify(out, vim.log.levels.INFO)
+end, { desc = "Push (set upstream)" })
+
+-- Show current branch name
+map("n", "<leader>Gi", function()
+  local branch = vim.fn.system("git branch --show-current"):gsub("\n", "")
+  local status = vim.fn.system("git status --short"):gsub("\n$", "")
+  vim.notify("Branch: " .. branch .. "\n" .. status, vim.log.levels.INFO)
+end, { desc = "Status Info" })
 
 -- ── Debug / DAP ──────────────────────────────────
 map("n", "<leader>Db", "<cmd>lua require('dap').toggle_breakpoint()<cr>", { desc = "Toggle Breakpoint" })
