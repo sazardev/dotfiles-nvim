@@ -366,8 +366,8 @@ return {
       view     = { width = 28, side = "left" },
       renderer = {
         group_empty         = true,
-        highlight_git       = true,
-        highlight_modified  = "name",
+        highlight_git       = "all",
+        highlight_modified  = "all",
         indent_markers      = { enable = true, icons = { corner = "└", edge = "│", item = "│", none = " " } },
         icons = {
           show              = { git = true, file = true, folder = true, folder_arrow = false },
@@ -383,16 +383,16 @@ return {
     config = function(_, opts)
       require("nvim-tree").setup(opts)
 
-      -- Gruvbox git status colors
+      -- Gruvbox git status colors — fg + bg sutil para resaltar toda la fila
       local hl = function(name, val) vim.api.nvim_set_hl(0, name, val) end
-      hl("NvimTreeGitNew",          { fg = "#b8bb26" })  -- verde: untracked
-      hl("NvimTreeGitDirty",        { fg = "#fabd2f" })  -- amarillo: modified
-      hl("NvimTreeGitStaged",       { fg = "#83a598" })  -- azul: staged
-      hl("NvimTreeGitDeleted",      { fg = "#fb4934" })  -- rojo: deleted
-      hl("NvimTreeGitRenamed",      { fg = "#8ec07c" })  -- aqua: renamed
-      hl("NvimTreeGitMerge",        { fg = "#d3869b" })  -- purple: merge conflict
-      hl("NvimTreeGitIgnored",      { fg = "#504945" })  -- gris: ignored
-      hl("NvimTreeOpenedFile",      { fg = "#d65d0e", bold = true })  -- naranja: abierto
+      hl("NvimTreeGitNew",          { fg = "#b8bb26", bg = "#1e2a1a" })  -- verde:    untracked
+      hl("NvimTreeGitDirty",        { fg = "#fabd2f", bg = "#2a2415" })  -- amarillo: modified
+      hl("NvimTreeGitStaged",       { fg = "#83a598", bg = "#1a2428" })  -- azul:     staged
+      hl("NvimTreeGitDeleted",      { fg = "#fb4934", bg = "#2a1a1a" })  -- rojo:     deleted
+      hl("NvimTreeGitRenamed",      { fg = "#8ec07c", bg = "#1a251e" })  -- aqua:     renamed
+      hl("NvimTreeGitMerge",        { fg = "#d3869b", bg = "#2a1e28" })  -- purple:   merge conflict
+      hl("NvimTreeGitIgnored",      { fg = "#504945" })                  -- gris:     ignored (sin bg)
+      hl("NvimTreeOpenedFile",      { fg = "#d65d0e", bold = true })
       hl("NvimTreeFolderName",      { fg = "#83a598" })
       hl("NvimTreeOpenedFolderName",{ fg = "#d65d0e", bold = true })
       hl("NvimTreeRootFolder",      { fg = "#d65d0e", bold = true })
