@@ -385,12 +385,12 @@ return {
 
       -- Gruvbox git status colors — fg + bg sutil
       local hl = function(name, val) vim.api.nvim_set_hl(0, name, val) end
-      hl("NvimTreeGitNew",          { fg = "#b8bb26", bg = "#1e2a1a" })  -- verde:    untracked
-      hl("NvimTreeGitDirty",        { fg = "#fabd2f", bg = "#2a2415" })  -- amarillo: modified
-      hl("NvimTreeGitStaged",       { fg = "#83a598", bg = "#1a2428" })  -- azul:     staged
-      hl("NvimTreeGitDeleted",      { fg = "#fb4934", bg = "#2a1a1a" })  -- rojo:     deleted
-      hl("NvimTreeGitRenamed",      { fg = "#8ec07c", bg = "#1a251e" })  -- aqua:     renamed
-      hl("NvimTreeGitMerge",        { fg = "#d3869b", bg = "#2a1e28" })  -- purple:   merge conflict
+      hl("NvimTreeGitNew",          { fg = "#b8bb26", bg = "#1e2a1a" })
+      hl("NvimTreeGitDirty",        { fg = "#fabd2f", bg = "#2a2415" })
+      hl("NvimTreeGitStaged",       { fg = "#83a598", bg = "#1a2428" })
+      hl("NvimTreeGitDeleted",      { fg = "#fb4934", bg = "#2a1a1a" })
+      hl("NvimTreeGitRenamed",      { fg = "#8ec07c", bg = "#1a251e" })
+      hl("NvimTreeGitMerge",        { fg = "#d3869b", bg = "#2a1e28" })
       hl("NvimTreeGitIgnored",      { fg = "#504945" })
       hl("NvimTreeOpenedFile",      { fg = "#d65d0e", bold = true })
       hl("NvimTreeFolderName",      { fg = "#83a598" })
@@ -399,45 +399,81 @@ return {
       hl("NvimTreeSpecialFile",     { fg = "#d3869b" })
       hl("NvimTreeExecFile",        { fg = "#b8bb26" })
 
-      -- ── Full-row highlight via hl_eol extmarks ────
-      -- NvimTree solo pinta detrás del texto. Añadimos extmarks con hl_eol=true
-      -- para extender el color hasta el borde derecho de cada fila git.
-      local git_groups = {
-        NvimTreeGitNew     = true,
-        NvimTreeGitDirty   = true,
-        NvimTreeGitStaged  = true,
-        NvimTreeGitDeleted = true,
-        NvimTreeGitRenamed = true,
-        NvimTreeGitMerge   = true,
-      }
+      -- ── Full-row git highlight ─────────────────────
+      -- nvim-tree pinta solo detrás del texto. Usamos hl_eol=true para
+      -- extender el fondo hasta el borde derecho de la ventana.
+      -- Detección: escaneamos el TEXTO de cada línea buscando los iconos
+      -- git de nvim-tree (más confiable que escanear extmarks internos).
       local ns = vim.api.nvim_create_namespace("nvimtree_git_eol")
+
+      -- Iconos git por defecto de nvim-tree (texto + nerd font fallback)
+      local icon_to_group = {
+        ["\xe2\x9c\x97"] = "NvimTreeGitDirty",   -- ✗  unstaged
+        ["\xe2\x9c\x93"] = "NvimTreeGitStaged",   -- ✓  staged
+        ["\xe2\x98\x85"] = "NvimTreeGitNew",      -- ★  untracked
+        ["\xe2\x9e\x9c"] = "NvimTreeGitRenamed",  -- ➜  renamed
+        ["\xe2\x97\x8c"] = "NvimTreeGitIgnored",  -- ◌  ignored
+      }
+      -- También nombres de grupos directos (para nvim-tree que usa extmarks)
+      local hl_to_group = {
+        NvimTreeGitNew     = "NvimTreeGitNew",
+        NvimTreeGitDirty   = "NvimTreeGitDirty",
+        NvimTreeGitStaged  = "NvimTreeGitStaged",
+        NvimTreeGitDeleted = "NvimTreeGitDeleted",
+        NvimTreeGitRenamed = "NvimTreeGitRenamed",
+        NvimTreeGitMerge   = "NvimTreeGitMerge",
+      }
 
       local function paint_rows(buf)
         if not vim.api.nvim_buf_is_valid(buf) then return end
         vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-        local n = vim.api.nvim_buf_line_count(buf)
-        for line = 0, n - 1 do
-          -- scan all extmarks on this line (namespace -1 = todos)
-          local marks = vim.api.nvim_buf_get_extmarks(
-            buf, -1, { line, 0 }, { line, -1 }, { details = true }
-          )
-          for _, m in ipairs(marks) do
-            local g = m[4] and m[4].hl_group
-            if g and git_groups[g] then
-              vim.api.nvim_buf_set_extmark(buf, ns, line, 0, {
-                hl_group = g,
-                hl_eol   = true,   -- extiende el fondo hasta el borde
-                priority = 90,
-              })
-              break
+        local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+
+        for i, text in ipairs(lines) do
+          local line  = i - 1
+          local group = nil
+
+          -- Método 1: escanear extmarks existentes en la línea
+          local ok, marks = pcall(vim.api.nvim_buf_get_extmarks,
+            buf, -1, { line, 0 }, { line, -1 }, { details = true })
+          if ok then
+            for _, m in ipairs(marks) do
+              local d = m[4]
+              if d then
+                local g = type(d.hl_group) == "string" and d.hl_group
+                       or (type(d.hl_group) == "number"
+                           and vim.fn.synIDattr(d.hl_group, "name"))
+                if g and hl_to_group[g] then
+                  group = hl_to_group[g]
+                  break
+                end
+              end
             end
+          end
+
+          -- Método 2: buscar iconos git en el texto de la línea
+          if not group then
+            for icon, g in pairs(icon_to_group) do
+              if text:find(icon, 1, true) and g ~= "NvimTreeGitIgnored" then
+                group = g
+                break
+              end
+            end
+          end
+
+          if group then
+            pcall(vim.api.nvim_buf_set_extmark, buf, ns, line, 0, {
+              hl_group = group,
+              hl_eol   = true,
+              priority = 300,  -- mayor que nvim-tree (típicamente 100-200)
+            })
           end
         end
       end
 
-      -- Engancharse al evento TreeRendered de nvim-tree
-      local ok, ntapi = pcall(require, "nvim-tree.api")
-      if ok then
+      -- Trigger 1: evento TreeRendered de nvim-tree
+      local ok2, ntapi = pcall(require, "nvim-tree.api")
+      if ok2 then
         ntapi.events.subscribe(ntapi.events.Event.TreeRendered, function(data)
           vim.schedule(function()
             local buf = (data and data.bufnr) or vim.fn.bufnr("NvimTree_*")
@@ -445,6 +481,20 @@ return {
           end)
         end)
       end
+
+      -- Trigger 2: fallback — FileType + CursorMoved dentro del Tree
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern  = "NvimTree",
+        callback = function(ev)
+          vim.schedule(function() paint_rows(ev.buf) end)
+          vim.api.nvim_create_autocmd({ "BufEnter", "CursorMoved" }, {
+            buffer   = ev.buf,
+            callback = function()
+              vim.schedule(function() paint_rows(ev.buf) end)
+            end,
+          })
+        end,
+      })
     end,
   },
 
