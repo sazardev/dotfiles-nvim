@@ -148,23 +148,23 @@ return {
       }
 
       if updates then
-        table.insert(layout, txt("⟳ " .. updates .. " updates available", "AlphaUpdate"))
+        table.insert(layout, txt(updates .. " updates available", "AlphaUpdate"))
       end
 
       -- ── Sección git (solo si hay repo) ─────────────
       if git then
         local status_parts = {}
         if git.behind > 0 then
-          table.insert(status_parts, { "↓ " .. git.behind .. " behind", "AlphaGitBehind" })
+          table.insert(status_parts, { git.behind .. " behind", "AlphaGitBehind" })
         end
         if git.ahead > 0 then
-          table.insert(status_parts, { "↑ " .. git.ahead .. " ahead", "AlphaGitAhead" })
+          table.insert(status_parts, { git.ahead .. " ahead", "AlphaGitAhead" })
         end
         if git.changes > 0 then
-          table.insert(status_parts, { "~ " .. git.changes .. " changed", "AlphaGitDirty" })
+          table.insert(status_parts, { git.changes .. " changed", "AlphaGitDirty" })
         end
         if #status_parts == 0 then
-          table.insert(status_parts, { "✓ clean", "AlphaGitClean" })
+          table.insert(status_parts, { "clean", "AlphaGitClean" })
         end
 
         -- Build status string (plain text; color per-entry via hl array)
@@ -186,14 +186,14 @@ return {
         -- Project name
         table.insert(layout, {
           type = "text",
-          val  = { " " .. git.project },
+          val  = { git.project },
           opts = { hl = "AlphaGitProject", position = "center" },
         })
 
         -- Branch
         table.insert(layout, {
           type = "text",
-          val  = { " " .. git.branch },
+          val  = { git.branch },
           opts = { hl = "AlphaGitBranch", position = "center" },
         })
 
