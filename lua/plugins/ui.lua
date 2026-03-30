@@ -148,10 +148,54 @@ return {
           disabled_filetypes   = { statusline = { "NvimTree", "alpha" } },
         },
         sections = {
-          lualine_a = { { "mode", fmt = function(s) return s:lower() end } },
-          lualine_b = { "branch", { "diff", symbols = { added = " ", modified = " ", removed = " " } } },
-          lualine_c = { { "filename", path = 1, symbols = { modified = "  ", readonly = " ", unnamed = "…" } } },
-          lualine_x = { { "diagnostics", symbols = { error = " ", warn = " ", hint = "󰌵 ", info = " " } }, "filetype" },
+          lualine_a = {
+            { "mode", fmt = function(s) return s:lower() end },
+            -- Indicador de macro grabándose (vital)
+            {
+              function()
+                local reg = vim.fn.reg_recording()
+                return reg ~= "" and "  @" .. reg or ""
+              end,
+              color = { fg = "#fb4934", gui = "bold" },
+            },
+          },
+          lualine_b = {
+            "branch",
+            { "diff", symbols = { added = " ", modified = " ", removed = " " } },
+          },
+          lualine_c = {
+            { "filename", path = 1, symbols = { modified = "  ", readonly = " ", unnamed = "…" } },
+            -- Harpoon: slot del archivo actual
+            {
+              function()
+                local ok, harpoon = pcall(require, "harpoon")
+                if not ok then return "" end
+                local list = harpoon:list()
+                local path = vim.fn.expand("%:p")
+                for i, item in ipairs(list.items) do
+                  if vim.fn.fnamemodify(item.value, ":p") == path then
+                    return "  " .. i
+                  end
+                end
+                return ""
+              end,
+              color = { fg = "#d65d0e" },
+            },
+          },
+          lualine_x = {
+            -- LSP status (qué servidor está activo)
+            {
+              function()
+                local clients = vim.lsp.get_clients({ bufnr = 0 })
+                if #clients == 0 then return "" end
+                local names = vim.tbl_map(function(c) return c.name end, clients)
+                return "  " .. table.concat(names, ", ")
+              end,
+              color = { fg = "#928374" },
+            },
+            { "diagnostics", symbols = { error = " ", warn = " ", hint = "󰌵 ", info = " " } },
+            "filetype",
+          },
           lualine_y = { "progress" },
           lualine_z = { "location" },
         },
@@ -216,6 +260,25 @@ return {
         open_file = { quit_on_open = false, resize_window = false },
       },
     },
+    config = function(_, opts)
+      require("nvim-tree").setup(opts)
+
+      -- Gruvbox git status colors
+      local hl = function(name, val) vim.api.nvim_set_hl(0, name, val) end
+      hl("NvimTreeGitNew",          { fg = "#b8bb26" })  -- verde: untracked
+      hl("NvimTreeGitDirty",        { fg = "#fabd2f" })  -- amarillo: modified
+      hl("NvimTreeGitStaged",       { fg = "#83a598" })  -- azul: staged
+      hl("NvimTreeGitDeleted",      { fg = "#fb4934" })  -- rojo: deleted
+      hl("NvimTreeGitRenamed",      { fg = "#8ec07c" })  -- aqua: renamed
+      hl("NvimTreeGitMerge",        { fg = "#d3869b" })  -- purple: merge conflict
+      hl("NvimTreeGitIgnored",      { fg = "#504945" })  -- gris: ignored
+      hl("NvimTreeOpenedFile",      { fg = "#d65d0e", bold = true })  -- naranja: abierto
+      hl("NvimTreeFolderName",      { fg = "#83a598" })
+      hl("NvimTreeOpenedFolderName",{ fg = "#d65d0e", bold = true })
+      hl("NvimTreeRootFolder",      { fg = "#d65d0e", bold = true })
+      hl("NvimTreeSpecialFile",     { fg = "#d3869b" })
+      hl("NvimTreeExecFile",        { fg = "#b8bb26" })
+    end,
   },
 
   -- ── Indent Blankline — guías sutiles ───────────

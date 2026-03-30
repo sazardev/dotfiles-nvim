@@ -6,7 +6,8 @@ return {
   -- ── Core DAP ───────────────────────────────────
   {
     "mfussenegger/nvim-dap",
-    event = "VeryLazy",
+    -- Lazy: solo carga cuando se usan keymaps de debug (<Space>D*)
+    keys = { "<leader>Db", "<leader>Dc", "<leader>Di", "<leader>Do", "<leader>Du", "<leader>Dt" },
   },
 
   -- ── DAP UI ─────────────────────────────────────

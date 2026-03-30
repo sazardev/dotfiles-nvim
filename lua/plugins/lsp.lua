@@ -138,13 +138,50 @@ return {
       local servers = {
         "ts_ls", "eslint", "astro", "tailwindcss",
         "html", "cssls",
-        "gopls", "bashls",
+        "bashls",
         "dockerls", "docker_compose_language_service",
         "taplo",
       }
       for _, server in ipairs(servers) do
         vim.lsp.config(server, { capabilities = capabilities })
       end
+
+      -- ── Gopls — config extendida con inlay hints ──
+      vim.lsp.config("gopls", {
+        capabilities = capabilities,
+        settings = {
+          gopls = {
+            gofumpt     = true,
+            staticcheck = true,
+            analyses = {
+              unusedparams  = true,
+              shadow        = true,
+              useany        = true,
+              nilness       = true,
+              unusedwrite   = true,
+            },
+            hints = {
+              assignVariableTypes    = true,
+              compositeLiteralFields = true,
+              compositeLiteralTypes  = false,  -- demasiado verboso en Flutter-style
+              constantValues         = true,
+              functionTypeParameters = true,
+              parameterNames         = true,
+              rangeVariableTypes     = true,
+            },
+          },
+        },
+      })
+
+      -- Activar inlay hints al conectar cualquier LSP que los soporte
+      vim.api.nvim_create_autocmd("LspAttach", {
+        callback = function(args)
+          local client = vim.lsp.get_client_by_id(args.data.client_id)
+          if client and client.supports_method("textDocument/inlayHint") then
+            vim.lsp.inlay_hint.enable(true, { bufnr = args.buf })
+          end
+        end,
+      })
 
       -- ── YAML — con schemas para K8s, GitHub Actions, Azure ──
       vim.lsp.config("yamlls", {
@@ -205,7 +242,7 @@ return {
 
       -- Habilitar todos
       vim.lsp.enable(vim.list_extend(servers, {
-        "yamlls", "jsonls", "terraformls", "lua_ls",
+        "gopls", "yamlls", "jsonls", "terraformls", "lua_ls",
       }))
     end,
   },
@@ -233,13 +270,69 @@ return {
       local luasnip = require("luasnip")
       require("luasnip.loaders.from_vscode").lazy_load()
 
+      -- Gruvbox palette para CMP
+      local hl = function(name, val) vim.api.nvim_set_hl(0, name, val) end
+      local bg     = "#1d2021"
+      local bg3    = "#3c3836"
+      local fg     = "#ebdbb2"
+      local fg_dim = "#a89984"
+      local orange = "#d65d0e"
+      local yellow = "#fabd2f"
+      local green  = "#b8bb26"
+      local blue   = "#83a598"
+      local purple = "#d3869b"
+      local aqua   = "#8ec07c"
+      local red    = "#fb4934"
+
+      hl("CmpNormal",              { bg = bg,  fg = fg })
+      hl("CmpBorder",              { bg = bg,  fg = "#504945" })
+      hl("CmpDocNormal",           { bg = bg,  fg = fg })
+      hl("CmpDocBorder",           { bg = bg,  fg = "#504945" })
+      hl("CmpSel",                 { bg = bg3, fg = fg, bold = true })
+      hl("CmpItemAbbrMatch",       { fg = yellow, bold = true })
+      hl("CmpItemAbbrMatchFuzzy",  { fg = yellow })
+      hl("CmpItemAbbrDeprecated",  { fg = "#504945", strikethrough = true })
+      hl("CmpItemMenu",            { fg = "#665c54" })
+      -- Kind icons por categoría (paleta gruvbox)
+      hl("CmpItemKindText",        { fg = fg_dim })
+      hl("CmpItemKindMethod",      { fg = blue })
+      hl("CmpItemKindFunction",    { fg = blue })
+      hl("CmpItemKindConstructor", { fg = orange })
+      hl("CmpItemKindField",       { fg = green })
+      hl("CmpItemKindVariable",    { fg = fg })
+      hl("CmpItemKindClass",       { fg = yellow })
+      hl("CmpItemKindInterface",   { fg = yellow })
+      hl("CmpItemKindModule",      { fg = orange })
+      hl("CmpItemKindProperty",    { fg = green })
+      hl("CmpItemKindUnit",        { fg = aqua })
+      hl("CmpItemKindValue",       { fg = aqua })
+      hl("CmpItemKindEnum",        { fg = yellow })
+      hl("CmpItemKindKeyword",     { fg = red })
+      hl("CmpItemKindSnippet",     { fg = purple })
+      hl("CmpItemKindColor",       { fg = green })
+      hl("CmpItemKindFile",        { fg = fg_dim })
+      hl("CmpItemKindReference",   { fg = orange })
+      hl("CmpItemKindFolder",      { fg = fg_dim })
+      hl("CmpItemKindEnumMember",  { fg = aqua })
+      hl("CmpItemKindConstant",    { fg = aqua })
+      hl("CmpItemKindStruct",      { fg = yellow })
+      hl("CmpItemKindEvent",       { fg = orange })
+      hl("CmpItemKindOperator",    { fg = red })
+      hl("CmpItemKindTypeParameter", { fg = yellow })
+
       cmp.setup({
         snippet = {
           expand = function(args) luasnip.lsp_expand(args.body) end,
         },
         window = {
-          completion    = cmp.config.window.bordered({ border = "single" }),
-          documentation = cmp.config.window.bordered({ border = "single" }),
+          completion    = cmp.config.window.bordered({
+            border     = "single",
+            winhighlight = "Normal:CmpNormal,FloatBorder:CmpBorder,CursorLine:CmpSel",
+          }),
+          documentation = cmp.config.window.bordered({
+            border     = "single",
+            winhighlight = "Normal:CmpDocNormal,FloatBorder:CmpDocBorder",
+          }),
         },
         mapping = cmp.mapping.preset.insert({
           ["<C-n>"]     = cmp.mapping.select_next_item(),
@@ -305,7 +398,14 @@ return {
         proto      = { "buf" },
         terraform  = { "terraform_fmt" },
       },
-      format_on_save = { timeout_ms = 500, lsp_fallback = true },
+      format_on_save = function(bufnr)
+        -- Respeta el toggle <Space>Uf
+        if vim.g.autoformat == false then return end
+        -- Deshabilitar para ciertos filetypes donde el LSP maneja todo
+        local disable_ft = { "dart" }
+        if vim.tbl_contains(disable_ft, vim.bo[bufnr].filetype) then return end
+        return { timeout_ms = 500, lsp_fallback = true }
+      end,
     },
   },
 }

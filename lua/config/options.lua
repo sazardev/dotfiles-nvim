@@ -45,5 +45,13 @@ opt.timeoutlen     = 300
 -- Clipboard
 opt.clipboard      = "unnamedplus"
 
+-- Scroll / splits
+opt.smoothscroll   = true         -- Neovim 0.10+ — scrolling nativo fluido
+opt.splitkeep      = "screen"     -- evita reposicionamiento al dividir
+opt.virtualedit    = "block"      -- selección visual rectangular libre
+
 -- Mouse
 opt.mouse          = "a"
+
+-- Autoformat flag (togglable con <Space>Uf)
+vim.g.autoformat   = true
