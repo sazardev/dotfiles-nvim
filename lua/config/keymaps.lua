@@ -84,10 +84,15 @@ map("v", "<leader>ar", "<cmd>CopilotChatReview<cr>",  { desc = "Review" })
 -- Helper: open output in a bottom split (read-only scratch buffer)
 local function ai_split(cmd)
   vim.cmd("botright 15new")
-  vim.cmd("r !" .. cmd)
   vim.bo.buftype    = "nofile"
   vim.bo.bufhidden  = "wipe"
+  vim.bo.modifiable = true
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { "⏳ Thinking…" })
+  vim.cmd("redraw")
+  local result = vim.fn.systemlist(cmd)
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, result)
   vim.bo.modifiable = false
+  vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = true, desc = "Close" })
 end
 
 -- Helper: save visual selection to /tmp/qwen_ctx.txt
@@ -95,111 +100,150 @@ local function save_selection()
   vim.cmd("'<,'>w! /tmp/qwen_ctx.txt")
 end
 
--- ── 3b (quality) — <leader>aq* ───────────────────
--- Generate code at cursor (3b)
+-- Helper: save current buffer to /tmp/qwen_ctx.txt
+local function save_buffer()
+  vim.cmd("w! /tmp/qwen_ctx.txt")
+end
+
+-- ── Qwen3 4b (quality) — <leader>aq* ─────────────
+-- Generate code at cursor (4b)
 map("n", "<leader>aqg", function()
-  local prompt = vim.fn.input("Qwen 3b › ")
+  local prompt = vim.fn.input("󰚩 Qwen3 4b › ")
   if prompt == "" then return end
   vim.cmd("r !ai-code " .. vim.fn.shellescape(prompt))
-end, { desc = "3b: Generate code" })
+end, { desc = "4b: Generate code" })
 
--- Replace selection with generated code (3b)
+-- Replace selection with generated code (4b)
 map("v", "<leader>aqg", function()
-  local prompt = vim.fn.input("Qwen 3b › ")
+  local prompt = vim.fn.input("󰚩 Qwen3 4b › ")
   if prompt == "" then return end
   vim.cmd("'<,'>!ai-code " .. vim.fn.shellescape(prompt))
-end, { desc = "3b: Replace selection" })
+end, { desc = "4b: Replace selection" })
 
--- Explain selection (3b)
+-- Explain selection (4b)
 map("v", "<leader>aqe", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --explain")
-end, { desc = "3b: Explain" })
+end, { desc = "4b: Explain selection" })
 
--- Document selection — inserts doc block above (3b)
+-- Explain current function/file (4b) — normal mode
+map("n", "<leader>aqe", function()
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --explain")
+end, { desc = "4b: Explain file" })
+
+-- Document selection — inserts doc block above (4b)
 map("v", "<leader>aqd", function()
   save_selection()
   local start_line = vim.fn.line("'<")
   local doc = vim.fn.system("cat /tmp/qwen_ctx.txt | ai-code --doc")
   local lines = vim.split(doc, "\n")
   vim.api.nvim_buf_set_lines(0, start_line - 1, start_line - 1, false, lines)
-end, { desc = "3b: Document" })
+end, { desc = "4b: Document selection" })
 
--- Review selection (3b)
+-- Document current file (4b) — normal mode, inserts at top
+map("n", "<leader>aqd", function()
+  save_buffer()
+  local doc = vim.fn.system("cat /tmp/qwen_ctx.txt | ai-code --doc")
+  local lines = vim.split(doc, "\n")
+  vim.api.nvim_buf_set_lines(0, 0, 0, false, lines)
+end, { desc = "4b: Document file" })
+
+-- Review selection (4b)
 map("v", "<leader>aqr", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --review")
-end, { desc = "3b: Review" })
+end, { desc = "4b: Review selection" })
 
--- Ask anything about selection (3b)
+-- Review current file (4b) — normal mode
+map("n", "<leader>aqr", function()
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --review")
+end, { desc = "4b: Review file" })
+
+-- Ask anything about selection (4b)
 map("v", "<leader>aqa", function()
-  local prompt = vim.fn.input("Qwen 3b › ")
+  local prompt = vim.fn.input("󰚩 Ask › ")
   if prompt == "" then return end
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code " .. vim.fn.shellescape(prompt))
-end, { desc = "3b: Ask about selection" })
+end, { desc = "4b: Ask about selection" })
 
--- Fix selection with instruction (3b)
+-- Ask anything with file context (4b) — normal mode
+map("n", "<leader>aqa", function()
+  local prompt = vim.fn.input("󰚩 Ask (file ctx) › ")
+  if prompt == "" then return end
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code " .. vim.fn.shellescape(prompt))
+end, { desc = "4b: Ask with file ctx" })
+
+-- Fix selection with instruction (4b)
 map("v", "<leader>aqf", function()
   local prompt = vim.fn.input("Fix: ")
   if prompt == "" then return end
   vim.cmd("'<,'>!ai-code --fix " .. vim.fn.shellescape(prompt))
-end, { desc = "3b: Fix selection" })
+end, { desc = "4b: Fix selection" })
 
--- ── 0.5b (fast) — <leader>as* ────────────────────
--- Quick generate at cursor (0.5b)
+-- ── Qwen3 0.6b (fast) — <leader>as* ──────────────
+-- Quick generate at cursor (0.6b)
 map("n", "<leader>asg", function()
-  local prompt = vim.fn.input("Qwen 0.5b › ")
+  local prompt = vim.fn.input("⚡ Qwen3 0.6b › ")
   if prompt == "" then return end
   vim.cmd("r !ai-code --fast " .. vim.fn.shellescape(prompt))
-end, { desc = "0.5b: Generate (fast)" })
+end, { desc = "0.6b: Generate (fast)" })
 
--- Replace selection (0.5b)
+-- Replace selection (0.6b)
 map("v", "<leader>asg", function()
-  local prompt = vim.fn.input("Qwen 0.5b › ")
+  local prompt = vim.fn.input("⚡ Qwen3 0.6b › ")
   if prompt == "" then return end
   vim.cmd("'<,'>!ai-code --fast " .. vim.fn.shellescape(prompt))
-end, { desc = "0.5b: Replace (fast)" })
+end, { desc = "0.6b: Replace (fast)" })
 
--- Explain selection (0.5b)
+-- Explain selection (0.6b)
 map("v", "<leader>ase", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --explain")
-end, { desc = "0.5b: Explain (fast)" })
+end, { desc = "0.6b: Explain (fast)" })
 
--- Document selection (0.5b)
+-- Document selection (0.6b)
 map("v", "<leader>asd", function()
   save_selection()
   local start_line = vim.fn.line("'<")
   local doc = vim.fn.system("cat /tmp/qwen_ctx.txt | ai-code --fast --doc")
   local lines = vim.split(doc, "\n")
   vim.api.nvim_buf_set_lines(0, start_line - 1, start_line - 1, false, lines)
-end, { desc = "0.5b: Document (fast)" })
+end, { desc = "0.6b: Document (fast)" })
 
--- Translate selection to English (0.5b)
+-- Translate selection to English (0.6b)
 map("v", "<leader>ast", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --translate")
-end, { desc = "0.5b: Translate to English" })
+end, { desc = "0.6b: Translate → English" })
 
--- Summarize selection (0.5b)
+-- Summarize selection (0.6b)
 map("v", "<leader>ass", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --summarize")
-end, { desc = "0.5b: Summarize" })
+end, { desc = "0.6b: Summarize" })
 
--- Review selection (0.5b)
+-- Summarize current file (0.6b) — normal mode
+map("n", "<leader>ass", function()
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --summarize")
+end, { desc = "0.6b: Summarize file" })
+
+-- Review selection (0.6b)
 map("v", "<leader>asr", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --review")
-end, { desc = "0.5b: Review (fast)" })
+end, { desc = "0.6b: Review (fast)" })
 
--- Quick question (0.5b — factual, no hallucination profile)
+-- Quick question — factual, anti-hallucination (0.6b)
 map("n", "<leader>asq", function()
-  local prompt = vim.fn.input("Ask › ")
+  local prompt = vim.fn.input("⚡ Ask › ")
   if prompt == "" then return end
   ai_split("ai-code --fast --local " .. vim.fn.shellescape(prompt))
-end, { desc = "0.5b: Quick question" })
+end, { desc = "0.6b: Quick question" })
 
 -- ── Go (lenguaje) ────────────────────────────────
 map("n", "<leader>gr", "<cmd>GoRun<cr>",          { desc = "Go Run" })
