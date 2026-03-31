@@ -141,12 +141,30 @@ return {
 
       wk.add({
         { "<leader>a",  group = "ai" },
-        -- Qwen local subgroup
-        { "<leader>aq", desc = "󰚩 Qwen: Generate",            mode = "n" },
-        { "<leader>aq", desc = "󰚩 Qwen: Replace selection",   mode = "v" },
-        { "<leader>aQ", desc = "󰚩 Qwen: Explain selection",   mode = "v" },
-        { "<leader>ad", desc = "󰚩 Qwen: Document selection",  mode = "v" },
-        { "<leader>aA", desc = "󰚩 Qwen: Ask about selection", mode = "v" },
+        -- Copilot
+        { "<leader>ai", desc = " Chat Toggle" },
+        { "<leader>ae", desc = " Explain" },
+        { "<leader>af", desc = " Fix" },
+        { "<leader>ar", desc = " Review" },
+        -- Qwen 3b (quality) subgroup
+        { "<leader>aq",  group = "󰚩 Qwen 3b (quality)" },
+        { "<leader>aqg", desc = "󰚩 Generate code",         mode = "n" },
+        { "<leader>aqg", desc = "󰚩 Replace selection",     mode = "v" },
+        { "<leader>aqe", desc = "󰚩 Explain",               mode = "v" },
+        { "<leader>aqd", desc = "󰚩 Document",              mode = "v" },
+        { "<leader>aqr", desc = "󰚩 Review",                mode = "v" },
+        { "<leader>aqf", desc = "󰚩 Fix selection",         mode = "v" },
+        { "<leader>aqa", desc = "󰚩 Ask about selection",   mode = "v" },
+        -- Qwen 0.5b (fast) subgroup
+        { "<leader>as",  group = "⚡ Qwen 0.5b (fast)" },
+        { "<leader>asg", desc = "⚡ Generate (fast)",       mode = "n" },
+        { "<leader>asg", desc = "⚡ Replace (fast)",        mode = "v" },
+        { "<leader>ase", desc = "⚡ Explain (fast)",        mode = "v" },
+        { "<leader>asd", desc = "⚡ Document (fast)",       mode = "v" },
+        { "<leader>ast", desc = "⚡ Translate → English",   mode = "v" },
+        { "<leader>ass", desc = "⚡ Summarize",             mode = "v" },
+        { "<leader>asr", desc = "⚡ Review (fast)",         mode = "v" },
+        { "<leader>asq", desc = "⚡ Quick question",        mode = "n" },
         { "<leader>b", group = "buffer" },
         { "<leader>D", group = "debug" },
         { "<leader>d", group = "diagnostics" },
