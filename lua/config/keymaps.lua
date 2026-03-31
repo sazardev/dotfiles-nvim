@@ -203,7 +203,13 @@ end, { desc = "0.6b: Replace (fast)" })
 map("v", "<leader>ase", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --explain")
-end, { desc = "0.6b: Explain (fast)" })
+end, { desc = "0.6b: Explain selection" })
+
+-- Explain current file (0.6b) — normal mode
+map("n", "<leader>ase", function()
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --explain")
+end, { desc = "0.6b: Explain file" })
 
 -- Document selection (0.6b)
 map("v", "<leader>asd", function()
@@ -212,7 +218,15 @@ map("v", "<leader>asd", function()
   local doc = vim.fn.system("cat /tmp/qwen_ctx.txt | ai-code --fast --doc")
   local lines = vim.split(doc, "\n")
   vim.api.nvim_buf_set_lines(0, start_line - 1, start_line - 1, false, lines)
-end, { desc = "0.6b: Document (fast)" })
+end, { desc = "0.6b: Document selection" })
+
+-- Document current file (0.6b) — normal mode, inserts at top
+map("n", "<leader>asd", function()
+  save_buffer()
+  local doc = vim.fn.system("cat /tmp/qwen_ctx.txt | ai-code --fast --doc")
+  local lines = vim.split(doc, "\n")
+  vim.api.nvim_buf_set_lines(0, 0, 0, false, lines)
+end, { desc = "0.6b: Document file" })
 
 -- Translate selection to English (0.6b)
 map("v", "<leader>ast", function()
@@ -224,7 +238,7 @@ end, { desc = "0.6b: Translate → English" })
 map("v", "<leader>ass", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --summarize")
-end, { desc = "0.6b: Summarize" })
+end, { desc = "0.6b: Summarize selection" })
 
 -- Summarize current file (0.6b) — normal mode
 map("n", "<leader>ass", function()
@@ -236,7 +250,86 @@ end, { desc = "0.6b: Summarize file" })
 map("v", "<leader>asr", function()
   save_selection()
   ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --review")
-end, { desc = "0.6b: Review (fast)" })
+end, { desc = "0.6b: Review selection" })
+
+-- Review current file (0.6b) — normal mode
+map("n", "<leader>asr", function()
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --review")
+end, { desc = "0.6b: Review file" })
+
+-- Ask about selection (0.6b) — visual mode
+map("v", "<leader>asa", function()
+  local prompt = vim.fn.input("⚡ Ask › ")
+  if prompt == "" then return end
+  save_selection()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast " .. vim.fn.shellescape(prompt))
+end, { desc = "0.6b: Ask about selection" })
+
+-- Ask with file context (0.6b) — normal mode
+map("n", "<leader>asa", function()
+  local prompt = vim.fn.input("⚡ Ask (file ctx) › ")
+  if prompt == "" then return end
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast " .. vim.fn.shellescape(prompt))
+end, { desc = "0.6b: Ask with file ctx" })
+
+-- Explain function under cursor (0.6b) — uses treesitter to extract nearest function
+map("n", "<leader>asf", function()
+  local ok, ts_utils = pcall(require, "nvim-treesitter.ts_utils")
+  local fn_text, insert_row
+  if ok then
+    local node = ts_utils.get_node_at_cursor()
+    while node do
+      local t = node:type()
+      if t:find("function") or t:find("method") or t:find("func_decl") or t == "function_definition" then
+        break
+      end
+      node = node:parent()
+    end
+    if node then
+      local sr, _, er, _ = node:range()
+      local lines = vim.api.nvim_buf_get_lines(0, sr, er + 1, false)
+      fn_text = table.concat(lines, "\n")
+      insert_row = sr
+    end
+  end
+  if not fn_text then
+    -- fallback: current paragraph
+    vim.cmd("normal! {")
+    local s = vim.fn.line(".")
+    vim.cmd("normal! }")
+    local e = vim.fn.line(".")
+    local lines = vim.api.nvim_buf_get_lines(0, s - 1, e, false)
+    fn_text = table.concat(lines, "\n")
+    insert_row = s - 1
+  end
+  local tmp = "/tmp/qwen_fn.txt"
+  local f = io.open(tmp, "w")
+  if f then f:write(fn_text) f:close() end
+  ai_split("cat " .. tmp .. " | ai-code --fast --funcexplain")
+end, { desc = "0.6b: Explain function" })
+
+-- Explain selection as function (0.6b) — visual mode
+map("v", "<leader>asf", function()
+  save_selection()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --funcexplain")
+end, { desc = "0.6b: Explain selection as fn" })
+
+-- Identify file architecture/purpose (0.6b) — normal mode
+map("n", "<leader>asi", function()
+  save_buffer()
+  ai_split("cat /tmp/qwen_ctx.txt | ai-code --fast --identify")
+end, { desc = "0.6b: Identify file purpose" })
+
+-- What is this symbol? (word under cursor) — 0.6b quick lookup
+map("n", "<leader>asw", function()
+  local word = vim.fn.expand("<cword>")
+  local ft   = vim.bo.filetype
+  if word == "" then return end
+  local prompt = "In " .. ft .. ", what is `" .. word .. "`? One sentence answer."
+  ai_split("ai-code --fast --local " .. vim.fn.shellescape(prompt))
+end, { desc = "0.6b: What is this symbol?" })
 
 -- Quick question — factual, anti-hallucination (0.6b)
 map("n", "<leader>asq", function()
