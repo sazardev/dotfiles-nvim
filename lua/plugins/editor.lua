@@ -146,8 +146,8 @@ return {
         { "<leader>ae", desc = " Explain" },
         { "<leader>af", desc = " Fix" },
         { "<leader>ar", desc = " Review" },
-        -- Qwen 3b (quality) subgroup
-        { "<leader>aq",  group = "󰚩 Qwen 3b (quality)" },
+        -- Qwen3 4b (quality) subgroup
+        { "<leader>aq",  group = "󰚩 Qwen3 4b (quality)" },
         { "<leader>aqg", desc = "󰚩 Generate code",         mode = "n" },
         { "<leader>aqg", desc = "󰚩 Replace selection",     mode = "v" },
         { "<leader>aqe", desc = "󰚩 Explain",               mode = "v" },
@@ -155,8 +155,8 @@ return {
         { "<leader>aqr", desc = "󰚩 Review",                mode = "v" },
         { "<leader>aqf", desc = "󰚩 Fix selection",         mode = "v" },
         { "<leader>aqa", desc = "󰚩 Ask about selection",   mode = "v" },
-        -- Qwen 0.5b (fast) subgroup
-        { "<leader>as",  group = "⚡ Qwen 0.5b (fast)" },
+        -- Qwen3 0.6b (fast) subgroup
+        { "<leader>as",  group = "⚡ Qwen3 0.6b (fast)" },
         { "<leader>asg", desc = "⚡ Generate (fast)",       mode = "n" },
         { "<leader>asg", desc = "⚡ Replace (fast)",        mode = "v" },
         { "<leader>ase", desc = "⚡ Explain (fast)",        mode = "v" },
